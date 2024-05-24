@@ -1,0 +1,8 @@
+channels:
+  - anaconda
+  - bioconda
+  - conda-forge
+dependencies:
+  - wget=1.21.4
+  - bowtie2=2.5.4
+  - gunzip=0.1.9

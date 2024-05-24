@@ -1,0 +1,4 @@
+{
+    "pepfile":"config/pepconfig.yml",
+    "hg38":"https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_46/GRCh38.p14.genome.fa.gz"
+}

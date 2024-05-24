@@ -1,0 +1,12 @@
+pep_version: 2.0.0
+sample_table: "test_samples.csv" #Change for run
+subsample_table: "test_subsamples.csv" #Change for run
+sample_modifiers:
+  append:
+    raw_data: "test/" #Change for run
+  duplicate:
+    sample_type: reads
+  derive:
+    attributes: [reads]
+    sources:
+      dna: "{raw_data}/{subsample}*.fastq.gz"

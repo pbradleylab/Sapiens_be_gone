@@ -1,0 +1,20 @@
+""" Clean reads of homo sapien derived sequences according to NCBI's standards
+with an additional cleaning step.
+"""
+from snakemake.utils import min_version
+min_version("7.0")
+
+configfile: "config/config.json"
+configfile: "config/tools.json"
+pepfile: config["pepfile"]
+include: "rules/visualize.smk"
+
+def get_sam(wildcards):
+    samlst = []
+    for subsample in pep.subsample_table.subsample.tolist():
+        project = get_subsample_attributes(subsample, "project", pep)
+        samlst.append(rules.krona.output[0].format(project=project, subsample=subsample))
+    return(samlst)
+
+rule all:
+    input: get_sam

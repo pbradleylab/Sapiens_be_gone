@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Kananen"
+  given-names: "Kathryn"
+  orcid: "https://orcid.org/0000-0001-6080-0323"
+- family-names: "Nghi"
+  given-names: "Tran"
+- family-names: "Bradley"
+  given-names: "Patrick"
+  orcid: "https://orcid.org/0000-0002-9231-8344"
+title: "Homo sapien read removal pipeline"
+version: 1.0.0
+date-released: 2024-05-23
+url: "https://github.com/pbradleylab/sapien-be-gone-pipeline.git"

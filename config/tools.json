@@ -1,0 +1,10 @@
+{
+    "bowtie2": {
+        "mem": 1024,
+        "threads": 8
+    },
+    "fastp": {
+        "mem": 1024,
+        "threads": 8
+    }
+}
