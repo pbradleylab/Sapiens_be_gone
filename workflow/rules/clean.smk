@@ -1,34 +1,31 @@
 include:"setup.smk"
 
-def get_r1_fastq(wildcards):
-    out = {} # Dictionary that will hold two reads with r1 in index 0 and r2 in index 1
-    reads = get_subsample_attributes(wildcards.subsample, "reads", pep)
-    r1=[x for x in reads if ("_R1" in x or ".R1" in x or ".r1" in x or "_r1" in x or "_1.fq" in x or "_1.fastq" in x)]
-    return r1[0]
-
-def get_r2_fastq(wildcards):
-    out = {} # Dictionary that will hold two reads with r1 in index 0 and r2 in index 1
-    reads = get_subsample_attributes(wildcards.subsample, "reads", pep)
-    r2=[x for x in reads if ("_R2" in x or ".R2" in x or ".r2" in x or "_r2" in x or "_2.fq" in x or "_2.fastq" in x)]
-    return r2[0]
-
-rule sra_human_scrubber:
-    input:
-        r1=get_r1_fastq,
-        r2=get_r2_fastq
-    output:
-        r1="results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq",
-        r2="results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
-    log:
+rule sra_human_scrubber_r1:
+    input:rules.gunzip_r1.output
+    output:"results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq"
+    log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
     conda: "../envs/clean.yml"
+    threads:config["sra_human_scubber"]["threads"]
     shell:
         """
+        scrub.sh -i {input} -o {output} -p {threads} 2> {log}
+        """
+
+rule sra_human_scrubber_r2:
+    input:rules.gunzip_r2.output
+    output:"results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
+    log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
+    conda: "../envs/clean.yml"
+    threads:config["sra_human_scubber"]["threads"]
+    shell:
+        """
+        scrub.sh -i {input} -o {output} -p {threads} 2> {log}
         """
 
 rule fastp:
     input:
-        r1=rules.sra_human_scrubber.output.r1,
-        r2=rules.sra_human_scrubber.output.r2
+        r1=rules.sra_human_scrubber_r1.output,
+        r2=rules.sra_human_scrubber_r2.output
     output:
         r1="results/{project}/clean/fastp/{subsample}_r1.fastq",
         r2="results/{project}/clean/fastp/{subsample}_r2.fastq",
@@ -66,3 +63,34 @@ rule retain_unmapped:
         samtools view -b -f 4 {input} > {output} 2> {log}
         """
 
+rule kraken2:
+    input:
+        db=rules.kraken_build_db.output,
+        r1=rules.fastp.output.r1,
+        r2=rules.fastp.output.r2
+    output: 
+        out="results/{project}/clean/kraken2/{subsample}_kraken2_out.txt",
+        report="results/{project}/clean/kraken2/{subsample}_kraken2_report.txt",
+        unclassified="results/{project}/clean/kraken2/{subsample}_filtered-reads.fq"
+    log: "logs/{project}/clean/retain_unmapped/{subsample}.log"
+    conda: "../envs/clean.yml"
+    threads:config["bowtie2"]["threads"]
+    shell:
+        """
+        kraken2 --db {input.db} --threads {threads} --output {output.out} --report {output.report} --unclassified-out {output.unclassified} {input.r1} {input.r2} 2> {log}
+        """
+
+rule kraken2_percentage_report:
+    input:
+        db=rules.kraken_build_db.output,
+        r1=rules.fastp.output.r1,
+        r2=rules.fastp.output.r2
+    output: "results/{project}/clean/kraken2_percentage_report/samples_kraken2_out.txt"
+    log: "logs/{project}/clean/kraken2_percentage_report/samples_kraken2.log"
+    conda: "../envs/clean.yml"
+    threads:config["bowtie2"]["threads"]
+    shell:
+        """
+        printf "sample-1\nsample-2\n" > {output}
+        scripts/kraken_reads_removed.sh >> {output}
+        """

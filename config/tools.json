@@ -1,10 +1,16 @@
 {
     "bowtie2": {
-        "mem": 1024,
-        "threads": 8
+        "mem":1024,
+        "threads":8
     },
     "fastp": {
-        "mem": 1024,
-        "threads": 8
+        "mem":1024,
+        "threads":8
+    },
+    "sra_human_scubber": {
+        "threads":8
+    },
+    "kraken2": {
+        "threads":8
     }
 }

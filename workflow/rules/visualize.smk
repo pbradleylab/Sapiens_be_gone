@@ -1,22 +1,21 @@
 from scripts.utils import *
 include:"clean.smk"
 
-rule sam_to_krona:
-    input:rules.retain_unmapped.output
-    output:"results/{project}/clean/sam_to_krona/{subsample}.xml"
-    conda: "../envs/visualize.yml"
-    log: "logs/{project}/visualize/sam_to_krona/{subsample}.log"
-    shell:
-        """
-        ktImportSAM {input} -o {output} 2> {log}
-        """
+def get_reports(wildcards):
+    samlst = []
+    for subsample in pep.subsample_table.subsample.tolist():
+        project = get_subsample_attributes(subsample, "project", pep)
+        samlst.append(rules.kraken2.output[1].format(project=project, subsample=subsample))
+    return(samlst)
 
 rule krona:
-    input:rules.sam_to_krona.output
-    output:"results/{project}/clean/sam_to_krona/{subsample}.html"
+    input:
+        reports=get_reports,
+        db=rules.krona_setup.output
+    output:"results/{project}/visualize/sam_to_krona/multi-krona.html"
     conda: "../envs/visualize.yml"
-    log: "logs/{project}/visualize/sam_to_krona/{subsample}.log"
+    log: "logs/{project}/visualize/sam_to_krona/multi-krona.log"
     shell:
         """
-        ktImportText {input} -o {output} 2> {log}
+        ktImportTaxonomy -t 5 -m 3 -o {output} *.report 2> {log}
         """
