@@ -33,6 +33,16 @@ rule download_gencode_hg38:
         wget -c --no-http-keep-alive {params.url} -O {output} 
         """
 
+# Used for the ncbi-scrubber
+rule download_ncbi_human_db:
+    output: "resources/ncbi/human_filter.db"
+    params:
+        url=config["human_filter"]
+    shell:
+        """
+        wget -c --no-http-keep-alive {params.url} -O {output}
+        """
+
 # Needed to decompress for rules in clean.smk (unfortunately).
 rule gunzip_fasta:
     input: rules.download_gencode_hg38.output

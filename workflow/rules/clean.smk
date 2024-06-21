@@ -26,24 +26,28 @@ rule fastp:
 
 # Run the sra human scrubber for each read to mask human regions.
 rule sra_human_scrubber_r1:
-    input:rules.fastp.output.r1
+    input:
+        r1=rules.fastp.output.r1,
+        db=rules.download_ncbi_human_db.output
     output:"results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq"
     log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["sra_human_scubber"]["threads"]
     shell:
         """
-        scrub.sh -i {input} -o - -p {threads} > {output} 2> {log}
+        scrub.sh -i {input.r1} -d {input.db} -o - -p {threads} > {output} 2> {log}
         """
 rule sra_human_scrubber_r2:
-    input:rules.fastp.output.r2
+    input:
+        r2=rules.fastp.output.r2,
+        db=rules.download_ncbi_human_db.output
     output:"results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
     log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["sra_human_scubber"]["threads"]
     shell:
         """
-        scrub.sh -i {input} -o - -p {threads} > {output} 2> {log}
+        scrub.sh -i {input.r2} -d {input.db} -o - -p {threads} > {output} 2> {log}
         """
 
 # Align against the cmobined human reference genome.
