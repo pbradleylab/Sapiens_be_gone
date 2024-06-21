@@ -41,7 +41,7 @@ Visualization: [Krona](https://github.com/marbl/Krona)
 
 ### This is an example DAG for an analysis run on the test sample.
 
-![Workflow DAG](/images/dag.svg)
+![Workflow DAG](/images/dag.png)
 
 Solid lines indicate the rules that have not been executed yet, whereas dashed lines depict completed jobs at time of the dag generation.
 
