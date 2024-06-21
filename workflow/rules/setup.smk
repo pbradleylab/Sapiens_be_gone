@@ -40,7 +40,7 @@ rule gunzip_fasta:
     conda: "../envs/setup.yml"
     shell:
         """
-        gunzip {input}
+        gunzip -c {input} > {output}
         """
 rule gunzip_r1:
     input: get_r1_fastq
@@ -74,20 +74,20 @@ rule bowtie2_index:
 # Download all of the necessary kraken resources. These are human libraries and NOT
 # prokaryotic. They are used soley for confirmation of the removal of human contamination.
 rule kraken_download_library:
-    output: "resource/kraken/kraken2_human_db/tmp.db"
+    output: "resources/kraken/kraken2_human_db/library/human/assembly_summary.txt"
     conda: "../envs/setup.yml"
     params:
-        dbdir="resource/kraken/kraken2_human_db/"
+        dbdir="resources/kraken/kraken2_human_db/"
     threads:config["kraken2"]["threads"]
     shell:
         """
         kraken2-build --download-library human --db {params.dbdir} --threads {threads}
         """
 rule kraken_download_tax:
-    output: "resource/kraken/kraken2_human_db/tax.db"
+    output: "resources/kraken/kraken2_human_db/taxonomy/gc.prt"
     conda: "../envs/setup.yml"
     params:
-        dbdir="resource/kraken/kraken2_human_db/"
+        dbdir="resources/kraken/kraken2_human_db/"
     threads:config["kraken2"]["threads"]
     shell:
         """
@@ -97,9 +97,9 @@ rule kraken_build_db:
     input:
         tax=rules.kraken_download_tax.output,
         library=rules.kraken_download_library.output
-    output: "resource/kraken/kraken2_human_db/see.db"
+    output: "resources/kraken/kraken2_human_db/taxo.k2d"
     params:
-        dbdir="resource/kraken/kraken2_human_db/"
+        dbdir="resources/kraken/kraken2_human_db/"
     conda: "../envs/setup.yml"
     threads:config["kraken2"]["threads"]
     shell:
@@ -108,9 +108,10 @@ rule kraken_build_db:
         """
 # Setup krona with the standard microbe and non-prokaryotic databases.
 rule krona_setup:
-    output: directory("resource/krona/")
+    output: "/tmp/done.krona"
     conda: "../envs/setup.yml"
     shell:
         """
         ktUpdateTaxonomy.sh
+        touch {output}
         """

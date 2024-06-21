@@ -7,33 +7,11 @@ they can be viewed in one place to check for remaining human contamination.
 """
 include:"setup.smk"
 
-# Run the sra human scrubber for each read to mask human regions.
-rule sra_human_scrubber_r1:
-    input:rules.gunzip_r1.output
-    output:"results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq"
-    log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
-    conda: "../envs/clean.yml"
-    threads:config["sra_human_scubber"]["threads"]
-    shell:
-        """
-        scrub.sh -i {input} -o {output} -p {threads} 2> {log}
-        """
-rule sra_human_scrubber_r2:
-    input:rules.gunzip_r2.output
-    output:"results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
-    log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
-    conda: "../envs/clean.yml"
-    threads:config["sra_human_scubber"]["threads"]
-    shell:
-        """
-        scrub.sh -i {input} -o {output} -p {threads} 2> {log}
-        """
-
 # Remove adaptors and low quality reads.
 rule fastp:
     input:
-        r1=rules.sra_human_scrubber_r1.output,
-        r2=rules.sra_human_scrubber_r2.output
+        r1=rules.gunzip_r1.output,
+        r2=rules.gunzip_r2.output
     output:
         r1="results/{project}/clean/fastp/{subsample}_r1.fastq",
         r2="results/{project}/clean/fastp/{subsample}_r2.fastq",
@@ -46,12 +24,34 @@ rule fastp:
         fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} -h {output.html} -w {threads} 2> {log}
         """
 
+# Run the sra human scrubber for each read to mask human regions.
+rule sra_human_scrubber_r1:
+    input:rules.fastp.output.r1
+    output:"results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq"
+    log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
+    conda: "../envs/clean.yml"
+    threads:config["sra_human_scubber"]["threads"]
+    shell:
+        """
+        scrub.sh -i {input} -o - -p {threads} > {output} 2> {log}
+        """
+rule sra_human_scrubber_r2:
+    input:rules.fastp.output.r2
+    output:"results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
+    log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
+    conda: "../envs/clean.yml"
+    threads:config["sra_human_scubber"]["threads"]
+    shell:
+        """
+        scrub.sh -i {input} -o - -p {threads} > {output} 2> {log}
+        """
+
 # Align against the cmobined human reference genome.
 rule bowtie2:
     input:
         index=rules.bowtie2_index.output,
-        r1=rules.fastp.output.r1,
-        r2=rules.fastp.output.r2
+        r1=rules.sra_human_scrubber_r1.output,
+        r2=rules.sra_human_scrubber_r2.output
     output: "results/{project}/clean/bowtie2/{subsample}.sam"
     log: "logs/{project}/clean/bowtie2/{subsample}.log"
     conda: "../envs/clean.yml"
@@ -69,18 +69,30 @@ rule retain_unmapped:
     output: "results/{project}/clean/retain_unmapped/{subsample}.sam"
     log: "logs/{project}/clean/retain_unmapped/{subsample}.log"
     conda: "../envs/clean.yml"
-    threads:config["bowtie2"]["threads"]
     shell:
         """
         samtools view -b -f 4 {input} > {output} 2> {log}
+        """
+
+rule sam_to_fastq:
+    input:rules.retain_unmapped.output
+    output:
+        r1="results/{project}/clean/sam_to_fastq/{subsample}_r1.fastq",
+        r2="results/{project}/clean/sam_to_fastq/{subsample}_r2.fastq",
+        singleton="results/{project}/clean/sam_to_fastq/{subsample}_singleton.fastq"
+    log: "logs/{project}/clean/sam_to_fastq/{subsample}.log"
+    conda: "../envs/clean.yml"
+    shell:
+        """
+        samtools fastq -1 {output.r1} -2 {output.r2} -s {output.singleton} {input} 2> {log}
         """
 
 # Classify against the human kraken2 database.
 rule kraken2:
     input:
         db=rules.kraken_build_db.output,
-        r1=rules.fastp.output.r1,
-        r2=rules.fastp.output.r2
+        r1=rules.sam_to_fastq.output.r1,
+        r2=rules.sam_to_fastq.output.r2
     output: 
         out="results/{project}/clean/kraken2/{subsample}_kraken2_out.txt",
         report="results/{project}/clean/kraken2/{subsample}_kraken2_report.txt",
