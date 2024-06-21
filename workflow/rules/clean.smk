@@ -1,5 +1,11 @@
+""" First remove the contamination using the official SRA-human-scrubber tool. Then align 
+using the short read based reference to a combined gencode and T2T. Retain unmapped reads only
+and classify them with kraken against human. Visualize all of the samples in krona, so that 
+they can be viewed in one place to check for remaining human contamination.
+"""
 include:"setup.smk"
 
+# Run the sra human scrubber for each read to mask human regions.
 rule sra_human_scrubber_r1:
     input:rules.gunzip_r1.output
     output:"results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq"
@@ -10,7 +16,6 @@ rule sra_human_scrubber_r1:
         """
         scrub.sh -i {input} -o {output} -p {threads} 2> {log}
         """
-
 rule sra_human_scrubber_r2:
     input:rules.gunzip_r2.output
     output:"results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
@@ -22,6 +27,7 @@ rule sra_human_scrubber_r2:
         scrub.sh -i {input} -o {output} -p {threads} 2> {log}
         """
 
+# Remove adaptors and low quality reads.
 rule fastp:
     input:
         r1=rules.sra_human_scrubber_r1.output,
@@ -38,6 +44,7 @@ rule fastp:
         fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} -h {output.html} -w {threads} 2> {log}
         """
 
+# Align against the cmobined human reference genome.
 rule bowtie2:
     input:
         index=rules.bowtie2_index.output,
@@ -52,6 +59,9 @@ rule bowtie2:
         bowtie2 -x {input.index} -1 {input.r1} -2 {input.r2} -S {output} -p {threads} 2> {log}
         """
 
+# Only keep reads that are unmapped. If reads are partially mapped they are removed. Also if they are 
+# multi-aligned reads due to using a merged (potentially duplicate sequence) reference they will still
+# not be retained in this use-case.
 rule retain_unmapped:
     input: rules.bowtie2.output
     output: "results/{project}/clean/retain_unmapped/{subsample}.sam"
@@ -63,6 +73,7 @@ rule retain_unmapped:
         samtools view -b -f 4 {input} > {output} 2> {log}
         """
 
+# Classify against the human kraken2 database.
 rule kraken2:
     input:
         db=rules.kraken_build_db.output,
@@ -80,6 +91,7 @@ rule kraken2:
         kraken2 --db {input.db} --threads {threads} --output {output.out} --report {output.report} --unclassified-out {output.unclassified} {input.r1} {input.r2} 2> {log}
         """
 
+# Output the kraken report needed for Krona visualizations.
 rule kraken2_percentage_report:
     input:
         db=rules.kraken_build_db.output,
