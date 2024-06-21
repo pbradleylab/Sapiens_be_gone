@@ -2,6 +2,8 @@
 using the short read based reference to a combined gencode and T2T. Retain unmapped reads only
 and classify them with kraken against human. Visualize all of the samples in krona, so that 
 they can be viewed in one place to check for remaining human contamination.
+
+@Author Kathryn Kananen
 """
 include:"setup.smk"
 
