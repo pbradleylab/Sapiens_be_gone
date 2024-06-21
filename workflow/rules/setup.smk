@@ -76,9 +76,9 @@ rule gunzip_r2:
 
 rule bowtie2_index:
     input: rules.zcat_all.output
-    output: "resources/gencode/GRCh38.p14.genome.fa.bt2"
+    output: "resources/zcat/zcat_all.fa.bt2"
     params:
-        prefix="GRCh38.p14.genome"
+        prefix="zcat_all"
     conda: "../envs/setup.yml"
     shell:
         """
