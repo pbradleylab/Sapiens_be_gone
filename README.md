@@ -40,7 +40,7 @@ Classification: [Kraken2](https://github.com/DerrickWood/kraken2)
 Visualization: [Krona](https://github.com/marbl/Krona)
 
 ### This is an example DAG for an analysis run on the test sample.
-![Screenshot 2024-06-21 215008](https://github.com/pbradleylab/Sapiens_be_gone/assets/135040296/46f0a17c-207d-49b2-a926-93987aeca817)
+![Screenshot 2024-06-21 215621](https://github.com/pbradleylab/Sapiens_be_gone/assets/135040296/ae537038-74fb-4521-a14c-08de172f8066)
 
 Solid lines indicate the rules that have not been executed yet, whereas dashed lines depict completed jobs at time of the dag generation.
 
