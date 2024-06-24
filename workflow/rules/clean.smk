@@ -7,6 +7,33 @@ they can be viewed in one place to check for remaining human contamination.
 """
 include:"setup.smk"
 
+
+# Check if trimming should be run or if this portion should be skipped
+def run_fastp(wildcards):
+    out = []
+    project=get_subsample_attributes(wildcards.subsample, "project", pep)
+    mode=get_subsample_attributes(wildcards.subsample, "mode", pep)
+    if mode == "full":
+        out.append(rules.fastp.output.r1.format(project=project, subsample=wildcards.subsample))
+        out.append(rules.fastp.output.r2.format(project=project, subsample=wildcards.subsample))
+    else:
+        out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample)) 
+        out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    return(out)
+
+def run_scrubber(wildcards):
+    out = []
+    project=get_subsample_attributes(wildcards.subsample, "project", pep)
+    mode=get_subsample_attributes(wildcards.subsample, "mode", pep)
+    if mode == "post_ncbi":
+        out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample))
+        out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    else:
+        out.append(rules.sra_human_scrubber_r1.output[0].format(project=project, subsample=wildcards.subsample))
+        out.append(rules.sra_human_scrubber_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    return(out)
+
+
 # Remove adaptors and low quality reads.
 rule fastp:
     input:
@@ -15,19 +42,20 @@ rule fastp:
     output:
         r1="results/{project}/clean/fastp/{subsample}_r1.fastq",
         r2="results/{project}/clean/fastp/{subsample}_r2.fastq",
-        html="results/{project}/clean/fastp/{subsample}.html"
+        html="results/{project}/clean/fastp/{subsample}.html",
+        json="results/{project}/clean/fastp/{subsample}.json"
     log: "logs/{project}/clean/fastp/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["fastp"]["threads"]
     shell:
         """
-        fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} -h {output.html} -w {threads} 2> {log}
+        fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} -h {output.html} -j {output.json} -w {threads} 2> {log}
         """
 
 # Run the sra human scrubber for each read to mask human regions.
 rule sra_human_scrubber_r1:
     input:
-        r1=rules.fastp.output.r1,
+        r1=run_fastp,
         db=rules.download_ncbi_human_db.output
     output:"results/{project}/clean/sra_human_scrubber/{subsample}_r1.fastq"
     log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
@@ -35,11 +63,12 @@ rule sra_human_scrubber_r1:
     threads:config["sra_human_scubber"]["threads"]
     shell:
         """
-        scrub.sh -i {input.r1} -d {input.db} -o - -p {threads} > {output} 2> {log}
+        scrub.sh -i {input.r1[0]} -d {input.db} -o - -p {threads} > {output} 2> {log}
         """
+
 rule sra_human_scrubber_r2:
     input:
-        r2=rules.fastp.output.r2,
+        r2=run_fastp,
         db=rules.download_ncbi_human_db.output
     output:"results/{project}/clean/sra_human_scrubber/{subsample}_r2.fastq"
     log:"logs/{project}/clean/sra_human_scrubber/{subsample}.log"
@@ -47,7 +76,7 @@ rule sra_human_scrubber_r2:
     threads:config["sra_human_scubber"]["threads"]
     shell:
         """
-        scrub.sh -i {input.r2} -d {input.db} -o - -p {threads} > {output} 2> {log}
+        scrub.sh -i {input.r2[1]} -d {input.db} -o - -p {threads} > {output} 2> {log}
         """
 
 # Align against the cmobined human reference genome.
@@ -55,8 +84,7 @@ rule bowtie2:
     input:
         index=rules.bowtie2_index.output,
         ref=rules.gunzip_fasta.output,
-        r1=rules.sra_human_scrubber_r1.output,
-        r2=rules.sra_human_scrubber_r2.output
+        reads=run_scrubber
     output: "results/{project}/clean/bowtie2/{subsample}.sam"
     params:
         prefix=rules.bowtie2_index.params.prefix
@@ -65,7 +93,7 @@ rule bowtie2:
     threads:config["bowtie2"]["threads"]
     shell:
         """
-        bowtie2 -x {params.prefix} -1 {input.r1} -2 {input.r2} -S {output} -p {threads} 2> {log}
+        bowtie2 -x {params.prefix} -1 {input.reads[0]} -2 {input.reads[1]} -S {output} -p {threads} 2> {log}
         """
 
 # Only keep reads that are unmapped. If reads are partially mapped they are removed. Also if they are 

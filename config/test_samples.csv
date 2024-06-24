@@ -1,2 +1,5 @@
-sample_name,project,sample_type
-SRR24091858,test,dna
+sample_name,project,sample_type,mode
+SRR24091858,test1,dna,no_trim
+SRR24091824_Human_feces_metagenome,test1,dna,full
+SRR24091826,test1,dna,full
+SRR24091865_Human_feces_metagenome,test1,dna,post_ncbi

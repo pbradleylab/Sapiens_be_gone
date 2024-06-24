@@ -74,13 +74,12 @@ rule bowtie2_index:
     input: rules.gunzip_fasta.output
     output: "resources/gencode/GRCh38.p14.genome.3.bt2"
     params:
-        prefix="GRCh38.p14.genome"
+        prefix="resources/gencode/GRCh38.p14.genome"
     conda: "../envs/setup.yml"
     threads:config["bowtie2"]["threads"]
     shell:
         """
         bowtie2-build --threads {threads} -f -q {input} {params.prefix}
-        mv {params.prefix}* $(dirname {output})
         """
 
 # Download all of the necessary kraken resources. These are human libraries and NOT
@@ -120,7 +119,7 @@ rule kraken_build_db:
         """
 # Setup krona with the standard microbe and non-prokaryotic databases.
 rule krona_setup:
-    output: "/tmp/done.krona"
+    output: "results/temporary/done.krona"
     conda: "../envs/visualize.yml"
     shell:
         """
