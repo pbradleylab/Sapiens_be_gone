@@ -24,10 +24,10 @@ rule krona:
     input:
         reports=get_reports,
         db=rules.krona_setup.output
-    output:"results/{project}/visualize/sam_to_krona/multi-krona.html"
+    output:"results/{project}/visualize/krona/multi-krona.html"
     conda: "../envs/visualize.yml"
-    log: "logs/{project}/visualize/sam_to_krona/multi-krona.log"
+    log: "logs/{project}/visualize/krona/multi-krona.log"
     shell:
         """
-        ktImportTaxonomy -t 5 -m 3 -o {output} *.report 2> {log}
+        ktImportTaxonomy -t 5 -m 3 -o {output} $(dirname {input.reports})/*report.txt 2> {log}
         """
