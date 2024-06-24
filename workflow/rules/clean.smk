@@ -54,15 +54,18 @@ rule sra_human_scrubber_r2:
 rule bowtie2:
     input:
         index=rules.bowtie2_index.output,
+        ref=rules.gunzip_fasta.output,
         r1=rules.sra_human_scrubber_r1.output,
         r2=rules.sra_human_scrubber_r2.output
     output: "results/{project}/clean/bowtie2/{subsample}.sam"
+    params:
+        prefix=rules.bowtie2_index.params.prefix
     log: "logs/{project}/clean/bowtie2/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["bowtie2"]["threads"]
     shell:
         """
-        bowtie2 -x {input.index} -1 {input.r1} -2 {input.r2} -S {output} -p {threads} 2> {log}
+        bowtie2 -x {params.prefix} -1 {input.r1} -2 {input.r2} -S {output} -p {threads} 2> {log}
         """
 
 # Only keep reads that are unmapped. If reads are partially mapped they are removed. Also if they are 
@@ -101,12 +104,14 @@ rule kraken2:
         out="results/{project}/clean/kraken2/{subsample}_kraken2_out.txt",
         report="results/{project}/clean/kraken2/{subsample}_kraken2_report.txt",
         unclassified="results/{project}/clean/kraken2/{subsample}_filtered-reads.fq"
+    params:
+        db=rules.kraken_build_db.params.dbdir
     log: "logs/{project}/clean/retain_unmapped/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["bowtie2"]["threads"]
     shell:
         """
-        kraken2 --db {input.db} --threads {threads} --output {output.out} --report {output.report} --unclassified-out {output.unclassified} {input.r1} {input.r2} 2> {log}
+        kraken2 --db {params.db} --threads {threads} --output {output.out} --report {output.report} --unclassified-out {output.unclassified} {input.r1} {input.r2} 2> {log}
         """
 
 # Output the kraken report needed for Krona visualizations.

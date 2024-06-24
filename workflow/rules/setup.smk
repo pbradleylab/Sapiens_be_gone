@@ -72,13 +72,15 @@ rule gunzip_r2:
 # Generate an index for bowtie2
 rule bowtie2_index:
     input: rules.gunzip_fasta.output
-    output: "resources/gencode/GRCh38.p14.genome.fa.bt2"
+    output: "resources/gencode/GRCh38.p14.genome.3.bt2"
     params:
         prefix="GRCh38.p14.genome"
     conda: "../envs/setup.yml"
+    threads:config["bowtie2"]["threads"]
     shell:
         """
-        bowtie2-build -f -q {input} {params.prefix}
+        bowtie2-build --threads {threads} -f -q {input} {params.prefix}
+        mv {params.prefix}* $(dirname {output})
         """
 
 # Download all of the necessary kraken resources. These are human libraries and NOT
@@ -109,7 +111,7 @@ rule kraken_build_db:
         library=rules.kraken_download_library.output
     output: "resources/kraken/kraken2_human_db/taxo.k2d"
     params:
-        dbdir="resources/kraken/kraken2_human_db/"
+        dbdir="resources/kraken/kraken2_human_db"
     conda: "../envs/setup.yml"
     threads:config["kraken2"]["threads"]
     shell:
@@ -119,7 +121,7 @@ rule kraken_build_db:
 # Setup krona with the standard microbe and non-prokaryotic databases.
 rule krona_setup:
     output: "/tmp/done.krona"
-    conda: "../envs/setup.yml"
+    conda: "../envs/visualize.yml"
     shell:
         """
         ktUpdateTaxonomy.sh

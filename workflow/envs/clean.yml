@@ -7,3 +7,4 @@ dependencies:
   - bowtie2=2.5.4
   - sra-human-scrubber=2.2.1
   - samtools=1.20
+  - kraken2=2.1.3
