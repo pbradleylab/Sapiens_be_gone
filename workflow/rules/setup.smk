@@ -74,7 +74,7 @@ rule bowtie2_index:
     input: rules.gunzip_fasta.output
     output: "resources/gencode/GRCh38.p14.genome.3.bt2"
     params:
-        prefix="GRCh38.p14.genome"
+        prefix="resources/gencode/GRCh38.p14.genome"
     conda: "../envs/setup.yml"
     threads:config["bowtie2"]["threads"]
     shell:
