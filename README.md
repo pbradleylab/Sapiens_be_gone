@@ -5,7 +5,7 @@ This workflow expects that you have [conda](https://docs.conda.io/en/latest/mini
 1. Activate your conda environment so that you are in the "base" environment. This can be achieved by running a source /path/to/conda/install/folder/bin/activate
 2. Make sure you have your channels set up to allow conda-forge by running `conda config --add channels conda-forge`
 3. Install snakemake into a new environment by running `conda create -n rnaquant -c bioconda snakemake=8.14.0`. Then activate it by running `conda activate rnaquant`.
-4. Move into the directory `cd rnaseq-quantification-pipeline` and if desired generate the test data by running `cd test && snakemake --use-conda --cores 4 -j`. The md5sum may say the files are not downloaded on the first go; however, if you run it again the files should all be OK. Move back to the rnaseq-quantification-pipeline folder after this is done, then run `snakemake --use-conda --cores 2 -n` to test if everything is installed correctly. If not, then you'll need to trouble shoot your environment.
+4. Move into the directory `cd Spiens_be_gone` and if desired generate the test data by running `cd test && snakemake --use-conda --cores 4 -j`. The md5sum may say the files are not downloaded on the first go; however, if you run it again the files should all be OK. Move back to the rnaseq-quantification-pipeline folder after this is done, then run `snakemake --use-conda --cores 2 -n` to test if everything is installed correctly. If not, then you'll need to trouble shoot your environment.
 
 That's it! If you have downloaded snakemake, the rest of the dependencies will be downloaded automatically for you via the workflow.
 
