@@ -17,6 +17,7 @@ In this pipeline we are using PEP which allows for easier portability between pr
 `sample_name`: The name of the sample without the ending. If it can't match it then you'll get an error.
 `alternate_id`: Really doesn't matter, but if there is a different ID that the sample is under add it here. Otherwise, just set this as 1,2,3,4 etc.
 `project`: The name of the project you are working on
+`mode`: Which part of the workflow a file should be processed with - either `full` (enitre workflow), `no_trim` (entire workflow minus fastp), `post_ncbi` (No fastp or NCBI's sra scrubber) 
 `sample_type`: Put `dna` here.
 3. Create a subsample sheet fill out the following.
 `sample_name`: The name of the sample as supplied in the sample file above.
