@@ -17,6 +17,10 @@ properties:
           type: string
           description: "Paired end only, no support for other types"
           enum: ["paired_end"]
+        mode:
+          type: string
+          description: "Can be one of three modes: full, post_ncbi, no_trim"
+          enum: ["full","post_ncbi","no_trim"]
         reads:
           anyOf:
             - type: string
