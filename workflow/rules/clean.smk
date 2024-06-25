@@ -83,7 +83,7 @@ rule sra_human_scrubber_r2:
 rule bowtie2:
     input:
         index=rules.bowtie2_index.output,
-        ref=rules.gunzip_fasta.output,
+        ref=rules.merge_fastas.output,
         reads=run_scrubber
     output: "results/{project}/clean/bowtie2/{subsample}.sam"
     params:
