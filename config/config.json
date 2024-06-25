@@ -1,5 +1,6 @@
 {
     "pepfile":"config/pepconfig.yml",
-    "hg38":"https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_46/GRCh38.p14.genome.fa.gz"
     "t2t":"https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
+    "hg38":"https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/latest_release/GRCh38.p14.genome.fa.gz",
+    "human_filter":" https://ftp.ncbi.nlm.nih.gov/sra/dbs/human_filter.db"
 }
