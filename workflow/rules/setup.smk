@@ -38,6 +38,9 @@ rule download_t2t_chm13:
         url=config["t2t"]
     conda: "../envs/setup.yml"
     shell: 
+        """
+        wget -c --no-http-keep-alive {params.url} -O {output}
+        """
 
 # Used for the ncbi-scrubber
 rule download_ncbi_human_db:
@@ -50,29 +53,33 @@ rule download_ncbi_human_db:
         """
 
 # Needed to decompress for rules in clean.smk (unfortunately).
-rule gunzip_fasta:
-    input: 
-        in1=rules.download_gencode_hg38.output,
-        in2=rules.download_t2t_chm13.output
-    output: 
-        out1= "resources/gencode/GRCh38.p14.genome.fa",
-        out2= "resources/t2t/T2T-CHM13v2.0_genomic.fa"
+rule gunzip_grch:
+    input: rules.download_gencode_hg38.output
+    output:"resources/gencode/GRCh38.p14.genome.fa"
     conda: "../envs/setup.yml"
     shell:
         """
-        gunzip {input.in1} > {output.out1}
-        gunzip {input.in2} > {output.out2}
+        gunzip {input} > {output}
         """
 
-rule zcat_all:
-    input:
-        in1=rules.gunzip_fasta.output.out1,
-        in2=rules.gunzip_fasta.output.out2 
-    output:"resources/zcat/merged_ref.fa"
+rule gunzip_t2t:
+    input:rules.download_t2t_chm13.output
+    output:"resources/t2t/T2T-CHM13v2.0_genomic.fa"
+    conda: "../envs/setup.yml"
     shell:
         """
-        zcat {input.in1} {input.in2} > {output}
-        gunzip -c {input} > {output}
+        gunzip {input} > {output}
+        """
+
+# Merge the fastas together
+rule merge_fastas:
+    input:
+        in1=rules.gunzip_t2t.output,
+        in2=rules.gunzip_grch.output
+    output: "resources/zcat/merged_ref.fa"
+    shell:
+        """
+        cat {input.in1} {input.in2} > {output}
         """
         
 rule gunzip_r1:
@@ -94,16 +101,15 @@ rule gunzip_r2:
 
 # Generate an index for bowtie2
 rule bowtie2_index:
-    input: rules.gunzip_fasta.output
-    output: "resources/gencode/merged_ref.3.bt2"
+    input: rules.merge_fastas.output
+    output: "resources/zcat/merged_ref.3.bt2"
     params:
-        prefix="resources/gencode/merged_ref"
+        prefix="resources/zcat/merged_ref"
     conda: "../envs/setup.yml"
     threads:config["bowtie2"]["threads"]
     shell:
         """
         bowtie2-build --threads {threads} -f -q {input} {params.prefix}
-        mv {params.prefix}* $(dirname {output})
         """
 
 # Download all of the necessary kraken resources. These are human libraries and NOT
@@ -145,7 +151,7 @@ rule kraken_build_db:
         """
 # Setup krona with the standard microbe and non-prokaryotic databases.
 rule krona_setup:
-    output: "/tmp/done.krona"
+    output: "results/temporary/done.krona"
     conda: "../envs/visualize.yml"
     shell:
         """
