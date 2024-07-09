@@ -13,26 +13,39 @@ def run_fastp(wildcards):
     out = []
     project=get_subsample_attributes(wildcards.subsample, "project", pep)
     mode=get_subsample_attributes(wildcards.subsample, "mode", pep)
-    if mode == "full":
-        out.append(rules.fastp.output.r1.format(project=project, subsample=wildcards.subsample))
-        out.append(rules.fastp.output.r2.format(project=project, subsample=wildcards.subsample))
+    seq=get_subsample_attributes(wildcards.subsample, "seq_method", pep)
+    if seq == "paired_end":    
+       if mode == "full":
+          out.append(rules.fastp.output.r1.format(project=project, subsample=wildcards.subsample))
+          out.append(rules.fastp.output.r2.format(project=project, subsample=wildcards.subsample))
+       else:
+          out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample)) 
+          out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
     else:
-        out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample)) 
-        out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
+       if mode == "full":
+          out.append(rules.fastp_single.output.format(project=project, subsample=wildcards.subsample))
+       else:
+          out.append(rules.gunzip.output.format(project=project, subsample=wildcards.subsample))
     return(out)
 
 def run_scrubber(wildcards):
     out = []
     project=get_subsample_attributes(wildcards.subsample, "project", pep)
     mode=get_subsample_attributes(wildcards.subsample, "mode", pep)
-    if mode == "post_ncbi":
-        out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample))
-        out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
-    else:
-        out.append(rules.sra_human_scrubber_r1.output[0].format(project=project, subsample=wildcards.subsample))
-        out.append(rules.sra_human_scrubber_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    seq=get_subsample_attributes(wildcards.subsample, "seq_method", pep)
+    if seq == "paired_end":
+        if mode == "post_ncbi":
+           out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample))
+           out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
+        else:
+           out.append(rules.sra_human_scrubber_r1.output[0].format(project=project, subsample=wildcards.subsample))
+           out.append(rules.sra_human_scrubber_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    else: 
+        if mode == "post_ncbi":
+           out.append(rules.gunzip_single.output[0].format(project=project, subsample=wildcards.subsample))
+        else:
+           out.append(rules.sra_human_scrubber_single.output[0].format(project=project, subsample=wildcards.subsample))
     return(out)
-
 
 # Remove adaptors and low quality reads.
 rule fastp:
