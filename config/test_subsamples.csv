@@ -3,8 +3,8 @@ SRR24091858,SRR24091858,dna,paired_end
 SRR24091824_Human_feces_metagenome,SRR24091824_Human_feces_metagenome,dna,paired_end
 SRR24091826,SRR24091826,dna,paired_end
 SRR24091865_Human_feces_metagenome,SRR24091865_Human_feces_metagenome,dna,paired_end
-SRR29522683,SRR29522683,dna,single_end
-SRR29522685,SRR29522685,dna,single_end
-SRR29522686,SRR29522686,dna,single_end
+SRR29522683,,dna,single_end
+SRR29522685,,dna,single_end
+SRR29522686,,dna,single_end
 
 
