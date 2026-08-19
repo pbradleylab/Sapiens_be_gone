@@ -1,22 +1,73 @@
 """ Setup the databases to be the latest. This will automatciall download any of the resources needed
-for removal of human contaminants. We assume paired-end reads are used here as infrustructre is not
-setup for single-end at this moment. 
+for removal of human contaminants.
 
 @Author Kathryn Kananen; Nia Tran
 """
 
-#pattern match for any of the reads assuming conventional naming conventions. If a pattern is not
-#in these function pairs, then it will not be found. Remember to add a new pattern to both functions
-#below for paired reads or you will get an error of a sample not existing and/or not found.
+READ1_PATTERNS = ("_R1", ".R1", ".r1", "_r1", "_1.fq", "_1.fastq")
+READ2_PATTERNS = ("_R2", ".R2", ".r2", "_r2", "_2.fq", "_2.fastq")
+SEQ_METHODS = ("paired_end", "single_end")
+
+
+def get_seq_method(wildcards):
+    seq_method = get_subsample_attributes(wildcards.subsample, "seq_method", pep)
+    if isinstance(seq_method, list):
+        if len(seq_method) != 1:
+            raise ValueError(
+                f"Subsample '{wildcards.subsample}' should have exactly one seq_method, "
+                f"found {len(seq_method)}: {seq_method}"
+            )
+        seq_method = seq_method[0]
+    if seq_method not in SEQ_METHODS:
+        raise ValueError(
+            f"Unsupported seq_method '{seq_method}' for subsample '{wildcards.subsample}'. "
+            f"Expected one of: {', '.join(SEQ_METHODS)}."
+        )
+    return seq_method
+
+
+def get_reads(wildcards):
+    reads = get_subsample_attributes(wildcards.subsample, "reads", pep)
+    if isinstance(reads, str):
+        reads = [reads]
+    reads = list(reads)
+    if not reads:
+        raise ValueError(f"No FASTQ files found for subsample '{wildcards.subsample}'.")
+    return reads
+
+
+# Pattern match for reads assuming conventional naming conventions. Paired-end samples must
+# include recognizable R1 and R2 files. Single-end samples must resolve to exactly one FASTQ.
 def get_r1_fastq(wildcards):
-    out = {} # Dictionary that will hold two reads with r1 in index 0 and r2 in index 1
-    reads = get_subsample_attributes(wildcards.subsample, "reads", pep)
-    r1=[x for x in reads if ("_R1" in x or ".R1" in x or ".r1" in x or "_r1" in x or "_1.fq" in x or "_1.fastq" in x)]
+    reads = get_reads(wildcards)
+    if get_seq_method(wildcards) == "single_end":
+        if len(reads) != 1:
+            raise ValueError(
+                f"Single-end subsample '{wildcards.subsample}' should resolve to exactly "
+                f"one FASTQ file, found {len(reads)}: {reads}"
+            )
+        return reads[0]
+    r1 = [x for x in reads if any(pattern in x for pattern in READ1_PATTERNS)]
+    if not r1:
+        raise ValueError(
+            f"Could not find an R1 FASTQ for paired-end subsample '{wildcards.subsample}'. "
+            f"Recognized patterns are: {', '.join(READ1_PATTERNS)}."
+        )
     return r1[0]
+
+
 def get_r2_fastq(wildcards):
-    out = {} # Dictionary that will hold two reads with r1 in index 0 and r2 in index 1
-    reads = get_subsample_attributes(wildcards.subsample, "reads", pep)
-    r2=[x for x in reads if ("_R2" in x or ".R2" in x or ".r2" in x or "_r2" in x or "_2.fq" in x or "_2.fastq" in x)]
+    if get_seq_method(wildcards) == "single_end":
+        raise ValueError(
+            f"Single-end subsample '{wildcards.subsample}' does not have an R2 FASTQ."
+        )
+    reads = get_reads(wildcards)
+    r2 = [x for x in reads if any(pattern in x for pattern in READ2_PATTERNS)]
+    if not r2:
+        raise ValueError(
+            f"Could not find an R2 FASTQ for paired-end subsample '{wildcards.subsample}'. "
+            f"Recognized patterns are: {', '.join(READ2_PATTERNS)}."
+        )
     return r2[0]
 
   

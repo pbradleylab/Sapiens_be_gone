@@ -8,37 +8,87 @@ they can be viewed in one place to check for remaining human contamination.
 include:"setup.smk"
 
 
-# Check if trimming should be run or if this portion should be skipped
+MODES = ("full", "post_ncbi", "no_trim")
+
+
+def get_mode(wildcards):
+    mode = get_subsample_attributes(wildcards.subsample, "mode", pep)
+    if isinstance(mode, list):
+        if len(mode) != 1:
+            raise ValueError(
+                f"Subsample '{wildcards.subsample}' should have exactly one mode, "
+                f"found {len(mode)}: {mode}"
+            )
+        mode = mode[0]
+    if mode not in MODES:
+        raise ValueError(
+            f"Unsupported mode '{mode}' for subsample '{wildcards.subsample}'. "
+            f"Expected one of: {', '.join(MODES)}."
+        )
+    return mode
+
+
+def is_paired_end(wildcards):
+    return get_seq_method(wildcards) == "paired_end"
+
+
+def optional_gunzip_r2(wildcards):
+    if is_paired_end(wildcards):
+        return rules.gunzip_r2.output[0]
+    return []
+
+
+def optional_scrubber_r2(wildcards):
+    if is_paired_end(wildcards):
+        return rules.sra_human_scrubber_r2.output[0]
+    return []
+
+
+def optional_fastp_r2(wildcards):
+    if is_paired_end(wildcards):
+        return rules.fastp.output.r2
+    return []
+
+
+def optional_sam_to_fastq_r2(wildcards):
+    if is_paired_end(wildcards):
+        return rules.sam_to_fastq.output.r2
+    return []
+
+
 def run_fastp(wildcards):
     out = []
-    project=get_subsample_attributes(wildcards.subsample, "project", pep)
-    mode=get_subsample_attributes(wildcards.subsample, "mode", pep)
-    if mode == "full":
+    project = get_subsample_attributes(wildcards.subsample, "project", pep)
+    if get_mode(wildcards) == "full":
         out.append(rules.fastp.output.r1.format(project=project, subsample=wildcards.subsample))
-        out.append(rules.fastp.output.r2.format(project=project, subsample=wildcards.subsample))
+        if is_paired_end(wildcards):
+            out.append(rules.fastp.output.r2.format(project=project, subsample=wildcards.subsample))
     else:
-        out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample)) 
-        out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
-    return(out)
+        out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample))
+        if is_paired_end(wildcards):
+            out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    return out
+
 
 def run_scrubber(wildcards):
     out = []
-    project=get_subsample_attributes(wildcards.subsample, "project", pep)
-    mode=get_subsample_attributes(wildcards.subsample, "mode", pep)
-    if mode == "post_ncbi":
+    project = get_subsample_attributes(wildcards.subsample, "project", pep)
+    if get_mode(wildcards) == "post_ncbi":
         out.append(rules.gunzip_r1.output[0].format(project=project, subsample=wildcards.subsample))
-        out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
+        if is_paired_end(wildcards):
+            out.append(rules.gunzip_r2.output[0].format(project=project, subsample=wildcards.subsample))
     else:
         out.append(rules.sra_human_scrubber_r1.output[0].format(project=project, subsample=wildcards.subsample))
-        out.append(rules.sra_human_scrubber_r2.output[0].format(project=project, subsample=wildcards.subsample))
-    return(out)
+        if is_paired_end(wildcards):
+            out.append(rules.sra_human_scrubber_r2.output[0].format(project=project, subsample=wildcards.subsample))
+    return out
 
 
 # Remove adaptors and low quality reads.
 rule fastp:
     input:
         r1=rules.gunzip_r1.output,
-        r2=rules.gunzip_r2.output
+        r2=optional_gunzip_r2
     output:
         r1="results/{project}/clean/fastp/{subsample}_r1.fastq",
         r2="results/{project}/clean/fastp/{subsample}_r2.fastq",
@@ -47,10 +97,20 @@ rule fastp:
     log: "logs/{project}/clean/fastp/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["fastp"]["threads"]
-    shell:
-        """
-        fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} -h {output.html} -j {output.json} -w {threads} 2> {log}
-        """
+    params:
+        seq_method=get_seq_method
+    run:
+        if params.seq_method == "paired_end":
+            shell(
+                "fastp -i {input.r1} -I {input.r2} -o {output.r1} "
+                "-O {output.r2} -h {output.html} -j {output.json} -w {threads} 2> {log}"
+            )
+        else:
+            shell(
+                "fastp -i {input.r1} -o {output.r1} -h {output.html} "
+                "-j {output.json} -w {threads} 2> {log}"
+            )
+            shell("touch {output.r2}")
 
 # Run the sra human scrubber for each read to mask human regions.
 rule sra_human_scrubber_r1:
@@ -87,14 +147,22 @@ rule bowtie2:
         reads=run_scrubber
     output: "results/{project}/clean/bowtie2/{subsample}.sam"
     params:
-        prefix=rules.bowtie2_index.params.prefix
+        prefix=rules.bowtie2_index.params.prefix,
+        seq_method=get_seq_method
     log: "logs/{project}/clean/bowtie2/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["bowtie2"]["threads"]
-    shell:
-        """
-        bowtie2 -x {params.prefix} -1 {input.reads[0]} -2 {input.reads[1]} -S {output} -p {threads} 2> {log}
-        """
+    run:
+        if params.seq_method == "paired_end":
+            shell(
+                "bowtie2 -x {params.prefix} -1 {input.reads[0]} -2 {input.reads[1]} "
+                "-S {output} -p {threads} 2> {log}"
+            )
+        else:
+            shell(
+                "bowtie2 -x {params.prefix} -U {input.reads[0]} "
+                "-S {output} -p {threads} 2> {log}"
+            )
 
 # Only keep reads that are unmapped. If reads are partially mapped they are removed. Also if they are 
 # multi-aligned reads due to using a merged (potentially duplicate sequence) reference they will still
@@ -117,37 +185,54 @@ rule sam_to_fastq:
         singleton="results/{project}/clean/sam_to_fastq/{subsample}_singleton.fastq"
     log: "logs/{project}/clean/sam_to_fastq/{subsample}.log"
     conda: "../envs/clean.yml"
-    shell:
-        """
-        samtools fastq -1 {output.r1} -2 {output.r2} -s {output.singleton} {input} 2> {log}
-        """
+    params:
+        seq_method=get_seq_method
+    run:
+        if params.seq_method == "paired_end":
+            shell(
+                "samtools fastq -1 {output.r1} -2 {output.r2} "
+                "-s {output.singleton} {input} 2> {log}"
+            )
+        else:
+            shell("samtools fastq {input} > {output.r1} 2> {log}")
+            shell("touch {output.r2} {output.singleton}")
 
 # Classify against the human kraken2 database.
 rule kraken2:
     input:
         db=rules.kraken_build_db.output,
         r1=rules.sam_to_fastq.output.r1,
-        r2=rules.sam_to_fastq.output.r2
+        r2=optional_sam_to_fastq_r2
     output: 
         out="results/{project}/clean/kraken2/{subsample}_kraken2_out.txt",
         report="results/{project}/clean/kraken2/{subsample}_kraken2_report.txt",
         unclassified="results/{project}/clean/kraken2/{subsample}_filtered-reads.fq"
     params:
-        db=rules.kraken_build_db.params.dbdir
+        db=rules.kraken_build_db.params.dbdir,
+        seq_method=get_seq_method
     log: "logs/{project}/clean/retain_unmapped/{subsample}.log"
     conda: "../envs/clean.yml"
     threads:config["bowtie2"]["threads"]
-    shell:
-        """
-        kraken2 --db {params.db} --threads {threads} --output {output.out} --report {output.report} --unclassified-out {output.unclassified} {input.r1} {input.r2} 2> {log}
-        """
+    run:
+        if params.seq_method == "paired_end":
+            shell(
+                "kraken2 --db {params.db} --threads {threads} "
+                "--output {output.out} --report {output.report} "
+                "--unclassified-out {output.unclassified} {input.r1} {input.r2} 2> {log}"
+            )
+        else:
+            shell(
+                "kraken2 --db {params.db} --threads {threads} "
+                "--output {output.out} --report {output.report} "
+                "--unclassified-out {output.unclassified} {input.r1} 2> {log}"
+            )
 
 # Output the kraken report needed for Krona visualizations.
 rule kraken2_percentage_report:
     input:
         db=rules.kraken_build_db.output,
         r1=rules.fastp.output.r1,
-        r2=rules.fastp.output.r2
+        r2=optional_fastp_r2
     output: "results/{project}/clean/kraken2_percentage_report/samples_kraken2_out.txt"
     log: "logs/{project}/clean/kraken2_percentage_report/samples_kraken2.log"
     conda: "../envs/clean.yml"

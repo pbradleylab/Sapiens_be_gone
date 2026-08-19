@@ -13,17 +13,17 @@ That's it! If you have downloaded snakemake, the rest of the dependencies will b
 In this pipeline we are using PEP which allows for easier portability between projects. You need to alter some of the files and generate two `.csv`.
 
 1. Edit the config/pepconfig.yml file's `raw_data:` string to be where your files are located at. Make sure to use the full path to avoid any errors.
-2. We need to generate the samples and subsamples files. subsamples is just where the paired end files are input, samples is an overview file. Each row contains a different sample and it's related information. First create your sample sheet and make sure it ends with `.csv`. There are two exmaples in the `config` folder 
+2. We need to generate the samples and subsamples files. The subsamples file describes each sequencing unit and whether it is paired-end or single-end; samples is an overview file. Each row contains a different sample and its related information. First create your sample sheet and make sure it ends with `.csv`. There are two examples in the `config` folder.
 `sample_name`: The name of the sample without the ending. If it can't match it then you'll get an error.
 `alternate_id`: Really doesn't matter, but if there is a different ID that the sample is under add it here. Otherwise, just set this as 1,2,3,4 etc.
 `project`: The name of the project you are working on
-`mode`: Which part of the workflow a file should be processed with - either `full` (enitre workflow), `no_trim` (entire workflow minus fastp), `post_ncbi` (No fastp or NCBI's sra scrubber) 
+`mode`: Which part of the workflow a file should be processed with - either `full` (entire workflow), `no_trim` (entire workflow minus fastp), or `post_ncbi` (no fastp or NCBI's sra scrubber).
 `sample_type`: Put `dna` here.
 3. Create a subsample sheet fill out the following.
 `sample_name`: The name of the sample as supplied in the sample file above.
-`subsample`: The same name of the sample_name. This is needed if it is paired end as there are technically two files to process.
+`subsample`: The sequencing unit name used to find the FASTQ file or files.
 `protocol`: Put `dna` here.
-`seq_method`: Put `paired_end` here
+`seq_method`: Put `paired_end` for paired reads or `single_end` for single reads.
 4. Edit the config/pepconfig.yml to contain the full path to the subsample.csv and the sample.csv on lines `sample_table:` and `subsample_table:`
 
 ### Run The Workflow
@@ -46,5 +46,5 @@ Visualization: [Krona](https://github.com/marbl/Krona)
 Solid lines indicate the rules that have not been executed yet, whereas dashed lines depict completed jobs at time of the dag generation.
 
 # Common FAQ
-- `list index out of range` Error: If you recieve an error that says `list index out of range` and the traceback points to `get_r1_fastq` or `get_r2_fastq` as the reason. More often than not the problem is in how the sample name is being given in the sample and subsample.tsv files. A common error is that the R1 or R2 extension is not recognized or it is being duplicated. When inputing the sample names, you do not need to include R1 or R2 in the name. Only include the file name up until the last . or _ before the paired read name. Recognized file endings are `_R1`, `.R1`, `.r1`, `_r1`, `_1` with the ending `fastq.gz` or `fq.gz`. If the error persists please feel free to submit an issue.
+- FASTQ discovery errors: If the traceback points to `get_r1_fastq` or `get_r2_fastq`, check the sample and subsample CSV files. For paired-end samples, the workflow expects one R1 and one R2 file and recognizes `_R1`, `.R1`, `.r1`, `_r1`, and `_1` for read 1, plus `_R2`, `.R2`, `.r2`, `_r2`, and `_2` for read 2, with `fastq.gz` or `fq.gz` files. For single-end samples, `seq_method` should be `single_end` and the subsample should resolve to exactly one FASTQ file.
 - When making the input csv files, there shouldn't be any duplicates in the `sample` column of the sample.csv or else an error will be thrown by snakemake.

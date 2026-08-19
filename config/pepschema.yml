@@ -15,8 +15,8 @@ properties:
           description: "Name Of The Sample"
         seq_method:
           type: string
-          description: "Paired end only, no support for other types"
-          enum: ["paired_end"]
+          description: "Sequencing layout for the sample"
+          enum: ["paired_end", "single_end"]
         mode:
           type: string
           description: "Can be one of three modes: full, post_ncbi, no_trim"
